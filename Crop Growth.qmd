@@ -1,0 +1,26 @@
+---
+title: "Crop Growth"
+author: "Cooper Riggs, Adam Bitner, & Stockton Nelson"
+format: pdf
+editor: visual
+---
+
+## Setup
+
+```{r}
+#Downloading Libraries
+library(tidyverse)
+
+#Bringing in Data
+potato <- vroom::vroom("PotatoCWSI.csv") |>
+  janitor::clean_names() |>
+  rename(x = point_x,
+         y = point_y,
+         eca = eca_shallow)
+```
+
+## Code
+
+```{r}
+
+```
