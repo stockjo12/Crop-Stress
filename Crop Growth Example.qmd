@@ -10,16 +10,15 @@ editor: visual
 ```{r}
 #Downloading Libraries
 library(tidyverse)
+library(FRK)
+library(spmodel)
 
 #Bringing in Data
 potato <- vroom::vroom("PotatoCWSI.csv") |>
-  janitor::clean_names() |>
-  rename(x = point_x,
-         y = point_y,
-         eca = eca_shallow)
+  janitor::clean_names()
 ```
 
-## Code
+## Example Usage
 
 ```{r}
 

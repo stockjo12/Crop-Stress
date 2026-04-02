@@ -1,0 +1,153 @@
+---
+title: "Crop Growth"
+author: "Cooper Riggs, Adam Bitner, & Stockton Nelson"
+format: pdf
+editor: visual
+---
+
+## Setup
+
+```{r}
+#Downloading Libraries
+library(tidyverse)
+library(FRK)
+library(spmodel)
+
+#Bringing in Data
+potato <- vroom::vroom("PotatoCWSI.csv") |>
+  janitor::clean_names() |>
+  na.omit()
+```
+
+## Libraries
+
+-   tidyverse
+
+-   FRK
+
+-   spmodel
+
+## Functions
+
+```{r}
+#Creating New Spatial Features
+K <- 20
+longlat <- as.matrix(potato[,1:2])
+centers <- fields::cover.design(longlat, nd = K)$design
+dist <- fields::rdist(centers)
+scale <- 1.5 * max(apply(dist, 1, function(x){sort(x)[2]}))
+spatial_features <- local_basis(
+  manifold = plane(),
+  loc = centers,
+  scale = rep(scale, K),
+  type = "bisquare") |>
+  eval_basis(longlat) |>
+  as.matrix()
+colnames(spatial_features) <- paste0("SF", 1:K)
+spotato <- bind_cols(potato, spatial_features)
+```
+
+```{r}
+#Fitting the Spatial Model
+psm <- splm(cwsi ~ slope + twi + aspect + eca_shallow + ndvi + SF1 + SF2 + SF3 + SF4 + SF5 + SF6 +SF7 + SF8 + SF9 + SF10 + SF11 + SF12 + SF13 + SF14 + SF15 +SF16 + SF17 + SF18 + SF19 + SF20, data = spotato, spcov_type = "exponential", xcoord = point_x, ycoord = point_y)
+
+#Getting the Summary
+summary(psm)
+```
+
+```{r}
+#Finding the R^2
+pseudoR2(psm)
+```
+
+## Cross Validation
+
+```{r}
+#Making a Cross Validation Function
+set.seed(12)
+cv <- function(fold){
+  #Split the Data
+  test  <- which(folds == fold)
+  train <- setdiff(1:nrow(data), test)
+  train <- data[train, ]
+  test  <- data[test, ]
+  
+  #Fit the Linear Model
+  model <- splm(cwsi ~ slope + twi + aspect + eca_shallow + ndvi + SF1 + SF2 + SF3 + SF4 + SF5 + SF6 +SF7 + SF8 + SF9 + SF10 + SF11 + SF12 + SF13 + SF14 + SF15 +SF16 + SF17 + SF18 + SF19 + SF20, data = train, spcov_type = "exponential", xcoord = point_x, ycoord = point_y)
+  
+  #Predict on the Test Set
+  pred <- predict(model, newdata = test)
+  
+  #Compute RMSE
+  sqrt(mean((test[["cwsi"]] - pred)^2))
+}
+
+#Setting Initial Values
+data <- spotato
+k <- 20
+folds <- rep(1:k, length = nrow(data)) |> sample()
+
+#Calculating the RMSE
+sprmse <- sapply(1:k, FUN = cv)
+mean(sprmse)
+```
+
+**RMSE:** \~0.3525
+
+```{r}
+#Making Fit and Prediction Data Frames 
+preds_df <- vroom::vroom("PotatoCWSI.csv") |>
+  janitor::clean_names() |>
+  filter(is.na(cwsi))
+preds <- preds_df |>
+  select(point_x, point_y) |>
+  as.matrix()
+spatial_features_pred <- local_basis(
+  manifold = plane(),
+  loc = centers,
+  scale = rep(scale, K),
+  type = "bisquare") |>
+  eval_basis(preds) |>
+  as.matrix()
+colnames(spatial_features_pred) <- paste0("SF", 1:K)
+prediction_df <- bind_cols(preds_df, spatial_features_pred)
+
+#Fitting the Spatial Model
+ppsm <- splm(cwsi ~ slope + twi + aspect + eca_shallow + ndvi + SF1 + SF2 + SF3 + SF4 + SF5 + SF6 +SF7 + SF8 + SF9 + SF10 + SF11 + SF12 + SF13 + SF14 + SF15 +SF16 + SF17 + SF18 + SF19 + SF20, data = spotato, spcov_type = "exponential", xcoord = point_x, ycoord = point_y)
+
+#Making Predictions Column
+prediction_df$yhat <- predict(
+  ppsm,
+  newdata = prediction_df
+)
+```
+
+```{r}
+#Create a single object containing all the spatial feature info
+spatial_info <- list(centers = centers,
+                     scale = scale,
+                     K = K)
+
+#Saving Objects for Future Analysis
+saveRDS(list(
+  model = psm,
+  spatial_info = spatial_info), "cwsi_model.rds")
+```
+
+## Objects
+
+-   Model: Spatial Model used for prediction on CWSI
+
+-   Spatial_Info: Objects used to make the spatial features in the model
+
+    -   centers: Points used as a reference for the spatial features.
+
+    -   scale: Number which determines the reach of the spatial correlation.
+
+    -   K: How many spatial features are created.
+
+## Example Usage
+
+```{r}
+
+```
