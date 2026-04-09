@@ -131,7 +131,8 @@ spatial_info <- list(centers = centers,
 #Saving Objects for Future Analysis
 saveRDS(list(
   model = psm,
-  spatial_info = spatial_info), "cwsi_model.rds")
+  spatial_info = spatial_info,
+  data = preds_df), "cwsi_model.rds")
 ```
 
 ## Objects

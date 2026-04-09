@@ -12,14 +12,47 @@ editor: visual
 library(tidyverse)
 library(FRK)
 library(spmodel)
-
-#Bringing in Data
-potato <- vroom::vroom("PotatoCWSI.csv") |>
-  janitor::clean_names()
 ```
 
 ## Example Usage
 
 ```{r}
+# Load model
+obj <- readRDS("cwsi_model.rds")
+model <- obj$model
+spatial_info <- obj$spatial_info
 
+# Load new data
+new_data <- obj$data
+
+# Extract spatial info
+centers <- spatial_info$centers
+scale <- spatial_info$scale
+K <- spatial_info$K
+
+# Create spatial features
+coords <- as.matrix(new_data[, c("point_x", "point_y")])
+
+spatial_features <- local_basis(
+  manifold = plane(),
+  loc = centers,
+  scale = rep(scale, K),
+  type = "bisquare"
+) |>
+  eval_basis(coords) |>
+  as.matrix()
+
+colnames(spatial_features) <- paste0("SF", 1:K)
+
+# Combine with data
+prediction_df <- bind_cols(new_data, spatial_features)
+
+# Predict
+prediction_df$yhat <- predict(model, newdata = prediction_df)
+
+# Plot
+ggplot(prediction_df, aes(point_x, point_y, color = yhat)) +
+  geom_point() +
+  scale_color_viridis_c() +
+  labs(title = "Predicted CWSI")
 ```
