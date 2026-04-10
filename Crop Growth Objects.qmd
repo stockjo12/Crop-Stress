@@ -146,9 +146,3 @@ saveRDS(list(
     -   scale: Number which determines the reach of the spatial correlation.
 
     -   K: How many spatial features are created.
-
-## Example Usage
-
-```{r}
-
-```
